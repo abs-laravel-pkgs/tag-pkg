@@ -1,23 +1,149 @@
 <?php
 
-namespace Abs\TagPkg;
+namespace Abs\TagPkg\Models;
 
 use Abs\HelperPkg\Traits\SeederTrait;
-use App\Company;
-use App\Config;
+use App\Models\Masters\Item;
+use App\Models\Company;
+use App\Models\Config;
+use App\Models\Masters\Category;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\BaseModel;
+use App\Models\BaseModel;
 
 class Tag extends BaseModel {
 	use SeederTrait;
 	use SoftDeletes;
 	protected $table = 'tags';
 	public $timestamps = true;
+
+	public function __construct(array $attributes = []) {
+		parent::__construct($attributes);
+		$this->rules = [
+			'name' => [
+				'min:3',
+			],
+		];
+	}
+
+	/**
+	 * The attributes that are mass assignable.
+	 *
+	 * @var array
+	 */
 	protected $fillable = [
-		'company_id',
-		'taggable_type_id',
 		'name',
 	];
+
+	protected $casts = [
+	];
+
+	public $sortable = [
+		'name',
+	];
+
+	public $sortScopes = [
+		//'id' => 'orderById',
+		//'code' => 'orderCode',
+		//'name' => 'orderBytName',
+		//'mobile_number' => 'orderByMobileNumber',
+		//'email' => 'orderByEmail',
+	];
+
+	// Custom attributes specified in this array will be appended to model
+	protected $appends = [
+	];
+
+	//This model's validation rules for input values
+	public $rules = [
+		//Defined in constructor
+	];
+
+	public $fillableRelationships = [
+		'company',
+		'type',
+	];
+
+	public $relationshipRules = [
+		'type' => [
+			'required',
+			//'hasOne:App\Models\Address,App\Models\Address::optionIds',
+		],
+	];
+
+	// Relationships to auto load
+	public static function relationships($action = '', $format = ''): array
+	{
+		$relationships = [];
+
+		if ($action === 'index') {
+			$relationships = array_merge($relationships, [
+				'type',
+			]);
+		} else if ($action === 'read') {
+			$relationships = array_merge($relationships, [
+				'type',
+			]);
+		} else if ($action === 'save') {
+			$relationships = array_merge($relationships, [
+			]);
+		} else if ($action === 'options') {
+			$relationships = array_merge($relationships, [
+			]);
+		}
+
+		return $relationships;
+	}
+
+	public static function appendRelationshipCounts($action = '', $format = ''): array
+	{
+		$relationships = [];
+
+		if ($action === 'index') {
+			$relationships = array_merge($relationships, [
+				'items',
+				'categories',
+			]);
+		} else if ($action === 'options') {
+			$relationships = array_merge($relationships, [
+			]);
+		}
+
+		return $relationships;
+	}
+
+	// Dynamic Attributes --------------------------------------------------------------
+
+	// Relationships --------------------------------------------------------------
+	public function type(): BelongsTo {
+		return $this->belongsTo(Config::class, 'taggable_type_id');
+	}
+
+	public function categories(): HasMany {
+		return $this->hasMany(Category::class);
+	}
+
+	public function items(): HasMany {
+		return $this->hasMany(Item::class);
+	}
+
+	//--------------------- Query Scopes -------------------------------------------------------
+	public function scopeFilterSearch($query, $term): void
+	{
+		if ($term !== '') {
+			$query->where(function ($query) use ($term) {
+				$query->orWhere('name', 'LIKE', '%' . $term . '%');
+			});
+		}
+	}
+
+	public function scopeFilterTypeName($query, $typeName): void
+	{
+		$query->whereHas('type',function ($query) use ($typeName) {
+			$query->where('configs.name', $typeName);
+		});
+	}
 
 	protected static $excelColumnRules = [
 		'Taggable Type Name' => [
@@ -97,11 +223,6 @@ class Tag extends BaseModel {
 			'taggable_type_id' => $taggable_type->id,
 			'name' => $record_data['Name'],
 		]);
-		//dd($record);
-		//$result = Self::validateAndFillExcelColumns($record_data, Static::$excelColumnRules, $record);
-		//if (!$result['success']) {
-		//	return $result;
-		//}
 
 		$record->created_by_id = $created_by_id;
 		$record->save();

@@ -1,14 +1,13 @@
 <?php
 
-namespace Abs\TagPkg\Api;
+namespace Abs\TagPkg\Controllers\Api;
 
 use Abs\BasicPkg\Traits\CrudTrait;
 use App\Http\Controllers\Controller;
-use App\Tag;
+use App\Models\Tag;
 
-class TagController extends Controller {
+class TagPkgApiController extends Controller {
 	use CrudTrait;
 	public $model = Tag::class;
 	public $successStatus = 200;
-
 }
